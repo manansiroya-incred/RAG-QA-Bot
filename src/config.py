@@ -15,8 +15,8 @@ DATA_PROCESSED_DIR = BASE_DIR / "data" / "processed"
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")  # Legacy (kept for reference)
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")  # Groq Llama API key
 
-EMBED_MODEL = "intfloat/e5-large-v2"  # retrieval-optimized embedding model
-LLM_MODEL = "llama-3.3-70b-versatile"  # Groq Llama model for QA chain
+EMBED_MODEL = "intfloat/e5-large-v2"  
+LLM_MODEL = "llama-3.3-70b-versatile"  
 
 # Tesseract configuration (legacy OCR - not used)
 TESSERACT_CMD = os.getenv("TESSERACT_CMD", None)

@@ -69,13 +69,18 @@ class CustomRetriever(BaseRetriever):
     
     def _get_relevant_documents(self, query: str) -> List[Document]:
         """Retrieve and rerank documents for a query."""
+        e5_query = f"query: {query}"
         # Get initial candidates
-        initial = self.vector_store.similarity_search(query, k=RERANK_TOP_K)
+        initial = self.vector_store.similarity_search(e5_query, k=RERANK_TOP_K)
         
         # Boost keyword matches
         boosted = _boost_keyword_matches(query, initial)
         
         # Rerank top candidates
+        for doc in boosted:
+            if doc.page_content.startswith("passage: "):
+                doc.page_content = doc.page_content.replace("passage: ", "", 1)
+
         results = rerank(query, boosted[:RERANK_TOP_K], top_k=self.k)
         
         return results
@@ -105,7 +110,7 @@ def get_qa_chain(collection_name: str = "documents"):
     llm = ChatGroq(
         model="llama-3.3-70b-versatile",
         api_key=os.getenv("GROQ_API_KEY"),
-        temperature=0.0,
+        temperature=0.3,
     )
     
     # Define prompt template
@@ -115,11 +120,8 @@ def get_qa_chain(collection_name: str = "documents"):
 Each context item includes metadata (page, source, type) at the top. Use this to cite correctly.
 
 Instructions:
-- Answer ONLY based on the provided context.
-- For EVERY statement, cite the exact [Page X] from the metadata.
-- If from multiple pages: [Page X, Y, Z].
-- Do NOT guess page numbers—use ONLY what's in the metadata.
-- If information not in context, say "I don't know."
+    If the answer is present, provide a concise response and cite the source ID/Page.
+    If the answer is absolutely NOT in the context, only then say you don't know.
 
 Context:
 {context}
@@ -146,7 +148,7 @@ Answer:"""
             
             formatted.append(
                 f"[Source {i}] {source} | Page {page} | Type: {modality}\n"
-                f"{doc.page_content}"
+                f"{doc.page_content.replace('passage: ', '', 1) if doc.page_content.startswith('passage: ') else doc.page_content}"
             )
         return "\n---\n".join(formatted)
     
@@ -181,4 +183,3 @@ Answer:"""
     qa_chain = RunnableLambda(chain_with_metadata_formatting)
     
     return qa_chain
-
