@@ -2,7 +2,7 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 from typing import List, Optional
-import streamlit as st # Added for professional caching
+import streamlit as st 
 
 from langchain_community.vectorstores import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -15,7 +15,6 @@ def _get_embeddings() -> HuggingFaceEmbeddings:
     logger.info("Loading embeddings model: %s", EMBED_MODEL)
     return HuggingFaceEmbeddings(
         model_name=EMBED_MODEL,
-        # Some versions of langchain-huggingface prefer it here:
         model_kwargs={'device': 'cpu'},
         encode_kwargs={'normalize_embeddings': True}
     )
@@ -34,9 +33,7 @@ def add_documents(
     metadatas: Optional[List[dict]] = None,
     collection_name: str = "documents",
 ) -> None:
-    """
-    Add documents to the Chroma collection with mandatory E5 prefixes.
-    """
+    # Add documents to the Chroma collection with mandatory E5 prefixes.
     if metadatas is not None and len(metadatas) != len(texts):
         raise ValueError("metadatas length must match texts length")
 
@@ -46,7 +43,5 @@ def add_documents(
     store = get_vector_store(collection_name)
     store.add_texts(texts=prefixed_texts, metadatas=metadatas)
     
-    # In newer LangChain versions, persist() is often handled automatically
-    # but we call it to be safe for your local setup
     store.persist()
     logger.info(f"Added {len(texts)} documents to {collection_name}")

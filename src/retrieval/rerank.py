@@ -27,7 +27,7 @@ def rerank(query: str, docs: List[Document], top_k: int = 3) -> List[Document]:
     
     # 2. Prepare pairs for joint encoding
     # Cross-encoders are 'Bi-Directional', looking at query and doc tokens together
-    pairs = [[query, doc.page_content] for doc in docs]
+    pairs = [[query, doc.page_content.strip()] for doc in docs]
     
     # 3. Predict relevance scores
     scores = model.predict(pairs)

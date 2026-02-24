@@ -3,16 +3,15 @@ import logging
 from pathlib import Path
 from typing import Dict, List
 import pdfplumber
-import pandas as pd  # Added for robust table handling
+import pandas as pd  
 
 logger = logging.getLogger(__name__)
 
 def _table_to_markdown(table: List[List[str]]) -> str:
-    """Convert a pdfplumber table to a clean, structured markdown string."""
+    #Convert a pdfplumber table to a clean, structured markdown string.
     if not table or not any(table):
         return ""
     
-    # Use Pandas to handle column alignment and cleaning
     df = pd.DataFrame(table)
     # Remove empty rows/cols often found in PDFs
     df = df.dropna(how='all').fillna("")
@@ -76,14 +75,12 @@ def parse_pdf(pdf_path: Path) -> List[Dict]:
                 # 2. General Text
                 text = page.extract_text() or ""
                 if text.strip():
-                    # CRITICAL: Prefix for E5 Model
                     elements.append({"type": "text", "page_number": page_idx, "content": f"passage: {text.strip()}"})
 
                 # 3. Tables
                 for table in (page.extract_tables() or []):
                     md = _table_to_markdown(table)
                     if md.strip():
-                        # CRITICAL: Prefix for E5 Model
                         elements.append({"type": "table", "page_number": page_idx, "content": f"passage: {md}"})
     except Exception as exc:
         logger.error("Global parse error: %s", exc)

@@ -10,8 +10,8 @@ from src.ingest.pdf_parser import parse_pdf
 logger = logging.getLogger(__name__)
 
 def _chunk_text(text: str) -> List[str]:
-    """Semantic chunking that respects the 'passage: ' prefix."""
-    # Strip prefix temporarily to chunk the actual content accurately
+    """Semantic chunking that respects the 'passage: ' prefix.
+    Strip prefix temporarily to chunk the actual content accurately"""
     prefix = "passage: "
     has_prefix = text.startswith(prefix)
     clean_text = text.replace(prefix, "", 1) if has_prefix else text

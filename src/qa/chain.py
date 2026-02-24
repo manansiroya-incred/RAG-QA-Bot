@@ -68,26 +68,33 @@ class CustomRetriever(BaseRetriever):
         super().__init__(vector_store=vector_store, k=k)
     
     def _get_relevant_documents(self, query: str) -> List[Document]:
-        """Retrieve and rerank documents for a query."""
+        """Retrieve, clean, and let the Reranker decide the final Source 1."""
         e5_query = f"query: {query}"
-        # Get initial candidates
-        initial = self.vector_store.similarity_search(e5_query, k=RERANK_TOP_K)
         
-        # Boost keyword matches
-        boosted = _boost_keyword_matches(query, initial)
+        # 1. Use MMR to get a diverse pool (fetch 15, keep 8 for reranking)
+        initial = self.vector_store.max_marginal_relevance_search(
+            e5_query, 
+            k=8, 
+            fetch_k=15, 
+            lambda_mult=0.6 
+        )
         
-        # Rerank top candidates
-        for doc in boosted:
+        # 2. Cleanup: Strip prefix BEFORE anything else
+        # This ensures both the Booster and Reranker see the raw text
+        for doc in initial:
             if doc.page_content.startswith("passage: "):
                 doc.page_content = doc.page_content.replace("passage: ", "", 1)
 
-        results = rerank(query, boosted[:RERANK_TOP_K], top_k=self.k)
+        # 3. Apply Keyword Boosting
+        # We boost the 8 documents to help identify potential candidates
+        boosted = _boost_keyword_matches(query, initial)
         
-        return results
-    
-    async def _aget_relevant_documents(self, query: str) -> List[Document]:
-        """Async version - not implemented, falls back to sync."""
-        return self._get_relevant_documents(query)
+        # 4. FINAL RERANK: This is the source of truth.
+        # It takes the boosted list and re-sorts it based on deep semantic relevance.
+        # The result of this is what the UI will enumerate (1, 2, 3).
+        final_results = rerank(query, boosted, top_k=self.k)
+        
+        return final_results
 
 
 def get_qa_chain(collection_name: str = "documents"):
@@ -100,13 +107,12 @@ def get_qa_chain(collection_name: str = "documents"):
     Returns:
         A LangChain chain that can answer questions
     """
-    # Load vector store
     vector_store = get_vector_store(collection_name)
     
     # Create custom retriever with boosting and reranking
     retriever = CustomRetriever(vector_store, k=TOP_K)
     
-    # Initialize LLM (swapped to Groq Llama 3 as requested)
+    # Initialize LLM (swapped to Groq Llama 3)
     llm = ChatGroq(
         model="llama-3.3-70b-versatile",
         api_key=os.getenv("GROQ_API_KEY"),
@@ -117,18 +123,18 @@ def get_qa_chain(collection_name: str = "documents"):
     prompt = ChatPromptTemplate.from_template(
         """You are a helpful assistant that answers questions based on the provided context.
 
-Each context item includes metadata (page, source, type) at the top. Use this to cite correctly.
+    Each context item includes metadata (page, source, type) at the top. Use this to cite correctly.
 
-Instructions:
+    Instructions:
     If the answer is present, provide a concise response and cite the source ID/Page.
     If the answer is absolutely NOT in the context, only then say you don't know.
 
-Context:
-{context}
+    Context:
+    {context}
 
-Question: {input}
+    Question: {input}
 
-Answer:"""
+    Answer:"""
     )
     
     # Custom function to format documents with explicit metadata
@@ -175,11 +181,10 @@ Answer:"""
             "context": formatted_context,
             "output": response.content,
             "answer": response.content,
-            "context_docs": context_docs  # Keep docs for UI source display
+            "context_docs": context_docs  
         }
     
     # Return as a Runnable that mimics the retrieval chain interface
     from langchain_core.runnables import RunnableLambda
-    qa_chain = RunnableLambda(chain_with_metadata_formatting)
-    
+    qa_chain = RunnableLambda(chain_with_metadata_formatting)    
     return qa_chain

@@ -11,11 +11,12 @@ project_root = Path(__file__).resolve().parents[2]
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-from src.qa.chain import get_qa_chain
-
 @st.cache_resource
 def load_chain():
-    """Load the QA chain once and keep it in memory."""
+    """Load the QA chain lazily to prevent initial boot-up lag."""
+    # This import only happens when the app actually needs the chain,
+    # allowing the UI to render the title and sidebar immediately.
+    from src.qa.chain import get_qa_chain 
     return get_qa_chain()
 
 def render_sources(context_docs: List[Any]):
@@ -56,12 +57,11 @@ def main():
             st.session_state.messages = []
             st.rerun()
         st.divider()
-        st.info("Built for Algebrik & InCred Internal Policy Q&A")
+        st.info("Built for InCred Internal Policy Q&A")
 
-    # Load Chain
     qa_chain = load_chain()
 
-    # Display Chat History using modern bubble components
+    # Display Chat History using bubble components
     for msg in st.session_state.messages:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
@@ -69,7 +69,7 @@ def main():
                 render_sources(msg["docs"])
 
     # Chat Input
-    if prompt := st.chat_input("Ask a question about the policy..."):
+    if prompt := st.chat_input("Ask a question..."):
         # 1. Display User Message
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):

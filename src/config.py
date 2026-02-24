@@ -12,7 +12,7 @@ DATA_RAW_DIR = BASE_DIR / "data" / "raw"
 DATA_PROCESSED_DIR = BASE_DIR / "data" / "processed"
 
 # Model configuration
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")  # Legacy (kept for reference)
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")  # Legacy (kept for future use if needed)
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")  # Groq Llama API key
 
 EMBED_MODEL = "intfloat/e5-large-v2"  
@@ -30,13 +30,13 @@ QDRANT_URL = os.getenv("QDRANT_URL", "")
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY", "")
 
 # Chunking defaults
-CHUNK_SIZE = 600  # characters
-CHUNK_OVERLAP = 120  # characters
+CHUNK_SIZE = 600  
+CHUNK_OVERLAP = 120  
 TABLE_MAX_COLS = 20
 TABLE_MAX_ROWS = 200
 
 # Retrieval defaults
-TOP_K = 5
+TOP_K = 3
 RERANK_TOP_K = 10
 
 # Reranker (cross-encoder)
@@ -50,5 +50,3 @@ def ensure_dirs() -> None:
         CHROMA_DB_DIR,
     ]:
         path.mkdir(parents=True, exist_ok=True)
-
-
