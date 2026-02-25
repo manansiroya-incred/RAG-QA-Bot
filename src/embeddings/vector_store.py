@@ -45,3 +45,12 @@ def add_documents(
     
     store.persist()
     logger.info(f"Added {len(texts)} documents to {collection_name}")
+
+def persist_vector_store() -> None:
+    """
+    In modern Chroma (0.4+), persistence is automatic.
+    This function remains as a placeholder to prevent pipeline errors.
+    """
+    # If you specifically wanted to force a save in older versions, 
+    # you would call store.persist(), but it's no longer required.
+    logger.info("Vector store persistence handled automatically by Chroma.")

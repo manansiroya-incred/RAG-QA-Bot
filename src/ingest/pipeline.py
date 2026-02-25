@@ -10,21 +10,12 @@ from src.ingest.pdf_parser import parse_pdf
 logger = logging.getLogger(__name__)
 
 def _chunk_text(text: str) -> List[str]:
-    """Semantic chunking that respects the 'passage: ' prefix.
-    Strip prefix temporarily to chunk the actual content accurately"""
-    prefix = "passage: "
-    has_prefix = text.startswith(prefix)
-    clean_text = text.replace(prefix, "", 1) if has_prefix else text
-
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=CHUNK_SIZE,
         chunk_overlap=CHUNK_OVERLAP,
         separators=["\n\n", "\n", ". ", " ", ""]
     )
-    chunks = splitter.split_text(clean_text)
-    
-    # Re-apply prefix to every chunk for E5 model compatibility
-    return [f"{prefix}{chunk}" for chunk in chunks]
+    return splitter.split_text(text) # Just return the raw chunks
 
 def process_pdf(pdf_path: Path) -> None:
     """Orchestrates PDF parsing and vector storage."""
@@ -42,8 +33,6 @@ def process_pdf(pdf_path: Path) -> None:
 
     for el in elements:
         content = el["content"]
-        # Tables and Boxes are usually small enough to not chunk
-        # But we pass them through _chunk_text to ensure prefixing is consistent
         chunks = _chunk_text(content) if el["type"] == "text" else [content]
         
         for i, chunk in enumerate(chunks):
@@ -57,12 +46,14 @@ def process_pdf(pdf_path: Path) -> None:
             })
 
     if docs:
-        # persist_immediately=False is better for batch performance
+        # Fixed: Removed the non-existent persist_immediately argument
         add_documents(docs, metas)
         logger.info(f"Added {len(docs)} chunks from {pdf_path.name}")
 
 def run_pipeline() -> None:
+    # This import is now safe because we added the function to vector_store.py
     from src.embeddings.vector_store import persist_vector_store
+    
     pdf_files = sorted(Path(DATA_RAW_DIR).glob("*.pdf"))
     if not pdf_files:
         logger.warning("No PDFs found.")
@@ -71,5 +62,6 @@ def run_pipeline() -> None:
     for pdf in pdf_files:
         process_pdf(pdf)
     
+    # Now this call won't fail
     persist_vector_store()
     logger.info("Pipeline complete!")

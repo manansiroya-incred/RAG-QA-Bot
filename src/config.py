@@ -34,14 +34,14 @@ QDRANT_URL = os.getenv("QDRANT_URL", "")
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY", "")
 
 # Chunking defaults
-CHUNK_SIZE = 600  
-CHUNK_OVERLAP = 120  
+CHUNK_SIZE = 900  
+CHUNK_OVERLAP = 250  
 TABLE_MAX_COLS = 20
 TABLE_MAX_ROWS = 200
 
 # Retrieval defaults
-TOP_K = 3
-RERANK_TOP_K = 10
+TOP_K = 5
+RERANK_TOP_K = 15
 
 # Reranker (cross-encoder)
 CROSS_ENCODER_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"

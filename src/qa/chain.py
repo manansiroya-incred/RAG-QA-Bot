@@ -75,9 +75,9 @@ class CustomRetriever(BaseRetriever):
         # 1. Use MMR to get a diverse pool (fetch 15, keep 8 for reranking)
         initial = self.vector_store.max_marginal_relevance_search(
             e5_query, 
-            k=8, 
-            fetch_k=15, 
-            lambda_mult=0.6 
+            k=12, 
+            fetch_k=25, 
+            lambda_mult=0.8 
         )
         
         # 2. Cleanup: Strip prefix BEFORE anything else
@@ -122,13 +122,21 @@ def get_qa_chain(collection_name: str = "documents"):
     
     # Define prompt template
     prompt = ChatPromptTemplate.from_template(
-        """You are a helpful assistant that answers questions based on the provided context.
+        """You are a specialized Banking Policy Assistant. Your task is to provide high-precision, technical answers based ONLY on the provided context. 
 
-    Each context item includes metadata (page, source, type) at the top. Use this to cite correctly.
+    ### STRICT INSTRUCTIONS:
+    1. **Comprehensiveness over Conciseness**: Do not summarize to the point of losing detail. If the policy mentions multiple conditions, criteria, or 'relaxations', etc.,  you MUST include them.
+    2. **Crux Bolding**: You MUST identify the "crux" of the answer—such as monetary values, timeframes, or question specific answer and put them in **bold** (e.g., **₹10.00 lacs**, **six months**, or **Standard Asset**).
+    3. **Structural Accuracy**: If a question asks for "conditions" or "circumstances," present them as a bulleted list to ensure no point is missed. Basically write the answer in a structured format.
+    4. **Numerical Precision**: Pay extreme attention to "up to," "exceeding," and "not exceeding" thresholds. 
+    5. **Breakdown for long answers**: If the answer is longer than 2-3 sentences, first provide a concise summary of the key points in 1-2 sentences, and then break down the detailed answer in a structured format (e.g., sections, bullet points). 
+    6. **Grounded Citations**: Every factual statement should be followed by its source and page number in parentheses.
+    7. **No Hallucinations**: If the information is missing, say you don't know and then provide the most relevant information from the context, clearly stating something like: "I don't know, the most relevant information is:...". Do not fabricate any information.
 
-    Instructions:
-    If the answer is present, provide a concise response and cite the source ID/Page.
-    If the answer is absolutely NOT in the context, only then say you don't know.
+    ### Response Format:
+    - Main Answer (with **bolded** key terms)
+    - Bulleted conditions/exceptions if applicable.
+    - Source: [File Name], Page: [Number]
 
     Context:
     {context}

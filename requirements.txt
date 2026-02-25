@@ -21,3 +21,4 @@ Pillow>=10.3.0
 langchain-groq>=0.1.0
 groq>=0.1.0
 datasets 
+tabulate

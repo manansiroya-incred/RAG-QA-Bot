@@ -70,18 +70,18 @@ def parse_pdf(pdf_path: Path) -> List[Dict]:
             for page_idx, page in enumerate(pdf.pages, start=1):
                 # 1. Boxes
                 for box_text in _detect_box_regions(page):
-                    elements.append({"type": "box", "page_number": page_idx, "content": box_text})
+                    elements.append({"type": "box", "page_number": page_idx, "content": box_text.replace("passage: ", "")})
 
                 # 2. General Text
                 text = page.extract_text() or ""
                 if text.strip():
-                    elements.append({"type": "text", "page_number": page_idx, "content": f"passage: {text.strip()}"})
+                    elements.append({"type": "text", "page_number": page_idx, "content": text.strip()})
 
                 # 3. Tables
                 for table in (page.extract_tables() or []):
                     md = _table_to_markdown(table)
                     if md.strip():
-                        elements.append({"type": "table", "page_number": page_idx, "content": f"passage: {md}"})
+                        elements.append({"type": "table", "page_number": page_idx, "content": md})
     except Exception as exc:
         logger.error("Global parse error: %s", exc)
     return elements
