@@ -1,17 +1,17 @@
 # RAG-QA - Knowledge Assistant
 
-A production-ready Retrieval-Augmented Generation (RAG) system orchestrated with **LangChain**. It ingests PDF documents or benchmark datasets, creates semantic embeddings, and enables high-precision question-answering using the latest **Gemini 3** architecture with grounded source citations and automated performance observability.
+A production-ready Retrieval-Augmented Generation (RAG) system orchestrated with **LangChain**. It ingests PDF documents or benchmark datasets, creates semantic embeddings, and enables high-precision question-answering with grounded source citations and automated performance observability.
 
 ## Overview
 
-This system leverages a sophisticated **4-stage retrieval pipeline** to ensure extreme accuracy and cost-efficiency:
+This system combines four advanced retrieval techniques to answer questions with extreme accuracy:
 
 1. **Semantic Search** – Uses HuggingFace embeddings (`e5-large-v2`) with mandatory `query:` and `passage:` prefixing.
 2. **Maximal Marginal Relevance (MMR)** – Diversifies results to ensure the LLM sees unique information rather than redundant chunks.
-3. **Keyword Boosting** – Amplifies exact keyword matches and high-priority "box" content via a custom heuristic layer.
-4. **Cross-Encoder Reranking** – Performs deep-semantic scoring of candidates to ensure "Source 1" is the most relevant.
+3. **Keyword Boosting** – Amplifies exact keyword matches and high-priority "box" content for improved recall.
+4. **Cross-Encoder Reranking** – Performs deep-semantic scoring of the top candidates to ensure "Source 1" is the most relevant.
 
-The system is powered by **Google Gemini 3 Flash**, orchestrated via **LangChain**, and features a built-in **Performance Observability** suite for tracking latency, token usage, and costs.
+The system uses **Google Gemini 3 Flash** to deliver ultra-fast, grounded responses with accurate citations and internal reasoning.
 
 ## Project Structure
 
@@ -20,12 +20,12 @@ src/
 ├── app/
 │   └── ui.py                # Streamlit interface with chat history and performance metrics
 ├── embeddings/
-│   └── vector_store.py      # ChromaDB management via LangChain wrappers
+│   └── vector_store.py      # ChromaDB management and E5 prefixing logic
 ├── ingest/
 │   ├── pipeline.py          # PDF processing orchestration and semantic chunking
 │   └── pdf_parser.py        # Text, table, and box extraction via pdfplumber
 ├── qa/
-│   └── chain.py             # Custom LangChain Retriever (MMR + Boosting + Rerank)
+│   └── chain.py             # Custom 4-stage retriever (MMR + Boosting + Rerank)
 └── retrieval/
     ├── rerank.py            # Cross-encoder model logic (ms-marco-MiniLM)
     └── tracker.py           # Performance Observability (Latency, Tokens, Cost tracking)
@@ -51,31 +51,38 @@ pip install -r requirements.txt
 
 ## Quick Start
 
-### ⚡ Step 1: Configuration
+### ⚡ Option 1: Benchmarking with SQuAD (Recommended for Testing)
 
-Ensure your `.env` file contains your Google API Key:
+To test the system using the Stanford Question Answering Dataset (SQuAD) from Hugging Face:
 
-```text
-GOOGLE_API_KEY=your_gemini_api_key_here
+```bash
+# Step 1: Ingest SQuAD contexts into the vector store
+python ingest_squad.py
+
+# Step 2: Set Python path and Launch UI
+$env:PYTHONPATH = "."
+streamlit run src/app/ui.py
 
 ```
 
-### ⚡ Step 2: Data Ingestion
+### 📁 Option 2: Using Your Own Policy Documents (PDF)
 
-To use the system for private PDF files (e.g., InCred internal policies):
+To use the system for private PDF files (e.g., Algebrik/InCred internal policies):
 
-1. Place PDF files in `data/raw/`.
-2. Run the ingestion pipeline:
+#### Step 1: Prepare Data
+
+Place your PDF files into the `data/raw/` folder.
+
+#### Step 2: Ingest Your Documents
 
 ```bash
 python run_pipeline.py
 
 ```
 
-### ⚡ Step 3: Launch Assistant
+#### Step 3: Launch the App
 
 ```bash
-# Set Python path to ensure 'src' is recognized
 $env:PYTHONPATH = "."
 streamlit run src/app/ui.py
 
@@ -83,35 +90,51 @@ streamlit run src/app/ui.py
 
 ---
 
-## 🚀 Advanced Features
+## 📋 Workflow Summary
 
-### Automated Performance Tracking
-
-Every query is monitored in real-time. The sidebar displays:
-
-* **Latency:** Exact time taken for the LLM to process context and generate an answer.
-* **Token Usage:** Breakdown of input, output, and **Gemini 3 Thinking Tokens**.
-* **Cost Efficiency:** Real-time USD cost calculation based on Feb 2026 pricing.
-* **Persistence:** All metrics are automatically saved to `performance_log.csv` for audit and reporting.
-
-### LangChain Orchestration
-
-The system utilizes **LangChain Expression Language (LCEL)** for a modular, "pluggable" architecture. By subclassing `BaseRetriever`, the custom 4-stage logic remains compatible with any standard LangChain component, allowing for seamless model swapping (e.g., Gemini 3 Flash vs. Pro).
-
-### Intelligent PDF Parsing
-
-`pdf_parser.py` doesn't just extract text; it detects spatial "boxes" (often used for high-priority policy alerts) and converts tables to Markdown to preserve structural relationships for the LLM's reasoning engine.
+| Step | Command | Purpose |
+| --- | --- | --- |
+| 1 | `pip install -r requirements.txt` | Install system dependencies |
+| 2 | `python ingest_squad.py` | Stream SQuAD dataset → Vectorize → Store |
+| 3 | `python run_pipeline.py` | Parse PDFs → Extract Boxes/Tables → Store |
+| 4 | `streamlit run src/app/ui.py` | Launch the Knowledge Assistant UI |
 
 ---
 
-## Configuration (`src/config.py`)
+## Features
+
+### Chat Interface & Observability
+
+* **Performance Tracking**: Real-time monitoring of Latency, Token usage (including Thinking Tokens), and Cost.
+* **CSV Logging**: Every query is logged to `performance_log.csv` for audit and reporting.
+* **Interactive History**: Bubble-style chat history with lazy-loading optimization.
+
+### Source Citations
+
+* Expand **"📚 Source Citations"** to see:
+* Exact **Page Numbers** or **SQuAD IDs**.
+* **Modality Labels** (Text vs. Table vs. Box).
+* Cleaned snippets (internal `passage:` prefixes are automatically stripped).
+
+### Advanced Retrieval Pipeline
+
+1. **Semantic Search**: Bi-Encoder finds top candidates via vector similarity.
+2. **MMR (Diversity)**: Re-filters results to minimize redundancy.
+3. **Keyword Boosting**: Multiplies scores for exact query matches and high-priority sections.
+4. **Cross-Encoder Reranking**: Final precision pass using `ms-marco-MiniLM-L-6-v2`.
+
+---
+
+## Configuration
+
+Edit `src/config.py` to customize behavior:
 
 | Setting | Value | Purpose |
 | --- | --- | --- |
-| `TOP_K` | 3 | Final number of sources shown to the User |
-| `RERANK_TOP_K` | 8 | Candidates sent to the Cross-Encoder for deep-scoring |
+| `TOP_K` | 3 | Final number of sources shown to the LLM/User |
+| `RERANK_TOP_K` | 8 | Number of candidates sent to the Cross-Encoder |
 | `EMBED_MODEL` | e5-large-v2 | SOTA embedding model with prefix requirements |
-| `LLM_MODEL` | gemini-3-flash | Next-gen model with 1M+ context window |
+| `LLM_MODEL` | gemini-3-flash-preview | High-intelligence model with multimodal support |
 
 ---
 
@@ -123,25 +146,35 @@ The system utilizes **LangChain Expression Language (LCEL)** for a modular, "plu
       User Query
           ↓
 [1] MMR Search (ChromaDB) → Diversity & Relevance
-          ↓ (Top-8 candidates)
-[2] Keyword & Priority Boosting → Heuristic Re-weighting
+          ↓ (Top-8 results)
+[2] Keyword & Priority Boosting → Heuristic Check
           ↓ (Prefix Stripping)
-[3] Cross-Encoder Reranking → Deep Semantic Scoring
+[3] Cross-Encoder Reranking → Deep Semantic Score
           ↓ (Top-3 sorted results)
-[4] Gemini 3 Generation → Grounded Answer with Metadata Citations
+[4] Gemini 3 Generation → Grounded Answer with Citations
 
 ```
+
+### Ingestion Logic
+
+* **PDF Pipeline**: `pdf_parser.py` detects spatial "boxes" and converts tables to Markdown.
+* **Orchestration**: Built using **LangChain LCEL** for modularity and easy component swapping.
+
+## Performance
+
+* **Ingestion**: ~4 seconds per PDF page.
+* **Retrieval**: <1.5 seconds (Semantic + MMR + Rerank).
+* **Latency tracking**: Built-in automated callbacks for monitoring production costs and speed.
 
 ## Technologies
 
 | Component | Technology |
 | --- | --- |
 | **Orchestration** | **LangChain** |
-| **LLM** | **Google Gemini 3 Flash / 3.1 Pro** |
+| **LLM** | **Google Gemini 3 Flash** |
 | **Embeddings** | HuggingFace (`intfloat/e5-large-v2`) |
 | **Vector DB** | ChromaDB (Local Persistence) |
 | **Reranking** | Sentence-Transformers (`Cross-Encoder`) |
-| **Parsing** | `pdfplumber` + `pandas` |
-| **Monitoring** | Custom Performance Callbacks (CSV Logging) |
+| **Tracking** | Custom Callbacks with CSV Logging |
 
 ---
