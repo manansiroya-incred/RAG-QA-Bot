@@ -1,8 +1,8 @@
 from __future__ import annotations
 import logging
+from functools import lru_cache
 from typing import List
 
-import streamlit as st
 from langchain_core.documents import Document
 from sentence_transformers import CrossEncoder
 
@@ -10,7 +10,7 @@ from src.config import CROSS_ENCODER_MODEL
 
 logger = logging.getLogger(__name__)
 
-@st.cache_resource # CRITICAL: Keeps the model in RAM across all app reruns
+@lru_cache(maxsize=1)
 def _get_reranker_model() -> CrossEncoder:
     """Initialize and cache the Cross-Encoder model."""
     logger.info("Loading Cross-Encoder model: %s", CROSS_ENCODER_MODEL)

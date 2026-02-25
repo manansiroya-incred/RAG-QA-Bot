@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, List
+from pathlib import Path
+from typing import Any, List, Optional, Union
 
 from langchain_classic.chains import create_retrieval_chain
 from langchain_classic.chains.combine_documents import create_stuff_documents_chain
@@ -98,7 +99,10 @@ class CustomRetriever(BaseRetriever):
         return final_results
 
 
-def get_qa_chain(collection_name: str = "documents"):
+def get_qa_chain(
+    collection_name: str = "documents",
+    persist_directory: Optional[Union[str, Path]] = None,
+):
     """
     Create and return a QA chain with retrieval.
     
@@ -108,15 +112,15 @@ def get_qa_chain(collection_name: str = "documents"):
     Returns:
         A LangChain chain that can answer questions
     """
-    vector_store = get_vector_store(collection_name)
+    vector_store = get_vector_store(collection_name, persist_directory=persist_directory)
     
     # Create custom retriever with boosting and reranking
     retriever = CustomRetriever(vector_store, k=TOP_K)
     
-    # Initialize LLM (swapped to Google Gemini 1.5 Flash)
-    llm = ChatGoogleGenerativeAI(
+    # Initialize LLM (swapped to Groq Llama 3.3 70B Versatile)
+    llm = ChatGroq(
         model=LLM_MODEL,
-        api_key=os.getenv("GOOGLE_API_KEY"),
+        api_key=os.getenv("GROQ_API_KEY"),
         temperature=0.3,
     )
     
