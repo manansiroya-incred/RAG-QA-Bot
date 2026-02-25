@@ -3,13 +3,15 @@ import os
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-
 import streamlit as st
 
 # Setup project root
 project_root = Path(__file__).resolve().parents[2]
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
+
+from src.config import LLM_MODEL
+from src.retrieval.tracker import PerformanceTracker
 
 @st.cache_resource
 def load_chain():
@@ -58,6 +60,8 @@ def main():
             st.rerun()
         st.divider()
         st.info("Built for InCred Internal Policy Q&A")
+        st.subheader("📊 Performance Stats")
+        metrics_container = st.container()
 
     qa_chain = load_chain()
 
@@ -74,19 +78,28 @@ def main():
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
+        
+        
 
         # 2. Generate Assistant Response
         with st.chat_message("assistant"):
             with st.spinner("Analyzing documents..."):
                 try:
+                    tracker = PerformanceTracker(LLM_MODEL)
                     # Invoke the chain we optimized earlier
-                    result = qa_chain.invoke({"input": prompt})
+                    result = qa_chain.invoke({"input": prompt}, config={"callbacks": [tracker]})
                     answer = result.get("answer", "I couldn't generate an answer.")
                     docs = result.get("context_docs", [])
                     
                     st.markdown(answer)
                     render_sources(docs)
                     
+                    if tracker.metrics and tracker.metrics.get("latency", 0) > 0:
+                        with metrics_container:
+                            st.write(f"**Model:** `{tracker.metrics['model']}`")
+                            st.write(f"**Latency:** {tracker.metrics['latency']}s")
+                            st.write(f"**Total Tokens:** {tracker.metrics['tokens']}")
+
                     # Store in history
                     st.session_state.messages.append({
                         "role": "assistant", 

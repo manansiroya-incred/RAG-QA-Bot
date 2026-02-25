@@ -7,15 +7,16 @@ from langchain_classic.chains.combine_documents import create_stuff_documents_ch
 from langchain_core.documents import Document
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.retrievers import BaseRetriever
-from langchain_core.runnables import RunnableLambda
+from langchain_core.runnables import RunnableLambda, chain
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_groq import ChatGroq
 import os
 
-from src.config import GOOGLE_API_KEY, LLM_MODEL, RERANK_TOP_K, TOP_K
+from src.config import GOOGLE_API_KEY, LLM_MODEL, RERANK_TOP_K, TOP_K, LLM_MODEL
 from src.embeddings.vector_store import get_vector_store
 from src.retrieval.rerank import rerank
 
+from src.retrieval.tracker import PerformanceTracker
 
 def _boost_keyword_matches(query: str, docs: List[Document], boost_factor: float = 1.5) -> List[Document]:
     """
@@ -112,10 +113,10 @@ def get_qa_chain(collection_name: str = "documents"):
     # Create custom retriever with boosting and reranking
     retriever = CustomRetriever(vector_store, k=TOP_K)
     
-    # Initialize LLM (swapped to Groq Llama 3)
-    llm = ChatGroq(
-        model="llama-3.3-70b-versatile",
-        api_key=os.getenv("GROQ_API_KEY"),
+    # Initialize LLM (swapped to Google Gemini 1.5 Flash)
+    llm = ChatGoogleGenerativeAI(
+        model=LLM_MODEL,
+        api_key=os.getenv("GOOGLE_API_KEY"),
         temperature=0.3,
     )
     
@@ -175,7 +176,19 @@ def get_qa_chain(collection_name: str = "documents"):
         
         # Get response from LLM
         response = llm.invoke(prompt_value)
-        
+        # --- FIX START: Handle Gemini 3's list-style output ---
+        raw_content = response.content
+    
+        if isinstance(raw_content, list):
+            # Join all text blocks together
+            clean_answer = "".join(
+                block.get("text", "") for block in raw_content 
+                if isinstance(block, dict) and "text" in block
+            )
+        else:
+            clean_answer = str(raw_content)
+        # --- FIX END ---        
+
         return {
             "input": inputs["input"],
             "context": formatted_context,
